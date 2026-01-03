@@ -1,0 +1,236 @@
+import React, { useState, useEffect } from 'react';
+import {
+  BookOpen, Timer, Calendar, Brain, Play, Pause,
+  RotateCcw, Plus, Trash2, CheckCircle, Circle,
+  MessageSquare, Moon, Sun, Heart, Search
+} from 'lucide-react';
+
+const PharmacyStudyApp = () => {
+  const [activeTab, setActiveTab] = useState('study');
+  const [subjects, setSubjects] = useState([]);
+  const [darkMode, setDarkMode] = useState(false);
+  const [language, setLanguage] = useState('ar');
+
+  /* ===== Dictionary States ===== */
+  const [dictionaryTerm, setDictionaryTerm] = useState('');
+  const [dictionaryResult, setDictionaryResult] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const translations = {
+    ar: {
+      title: 'مساعد الصيدلة الذكي',
+      study: 'المواد',
+      dictionary: 'القاموس',
+      addSubject: 'أضيفي مادة...',
+      noSubjects: 'لا توجد مواد بعد',
+      dictionaryTitle: '📖 القاموس الصيدلاني',
+      dictionaryPlaceholder: 'اكتبي اسم الدواء أو المصطلح...',
+      searching: 'جاري البحث...',
+      notFound: 'لم يتم العثور على المصطلح',
+      name: 'الاسم',
+      synonym: 'مرادف',
+    },
+    en: {
+      title: 'Smart Pharmacy Assistant',
+      study: 'Subjects',
+      dictionary: 'Dictionary',
+      addSubject: 'Add subject...',
+      noSubjects: 'No subjects yet',
+      dictionaryTitle: '📖 Pharmacy Dictionary',
+      dictionaryPlaceholder: 'Type drug name...',
+      searching: 'Searching...',
+      notFound: 'Term not found',
+      name: 'Name',
+      synonym: 'Synonym',
+    }
+  };
+
+  const t = translations[language];
+
+  /* ===== Pharmacy Dictionary API (RxNorm) ===== */
+  const searchPharmacyDictionary = async (term) => {
+    if (!term.trim()) {
+      setDictionaryResult(null);
+      return;
+    }
+
+    setIsSearching(true);
+    setDictionaryResult(null);
+
+    try {
+      const res = await fetch(
+        `https://rxnav.nlm.nih.gov/REST/drugs.json?name=${term}`
+      );
+      const data = await res.json();
+
+      const concept =
+        data?.drugGroup?.conceptGroup?.[0]?.conceptProperties?.[0];
+
+      if (concept) {
+        setDictionaryResult({
+          name: concept.name,
+          synonym: concept.synonym,
+          rxcui: concept.rxcui,
+        });
+      } else {
+        setDictionaryResult({ error: true });
+      }
+    } catch {
+      setDictionaryResult({ error: true });
+    }
+
+    setIsSearching(false);
+  };
+
+  /* ===== Helpers ===== */
+  const addSubject = (subject) => {
+    if (subject.trim()) {
+      setSubjects([...subjects, { id: Date.now(), name: subject }]);
+    }
+  };
+
+  const bgClass = darkMode
+    ? 'min-h-screen bg-gray-900'
+    : 'min-h-screen bg-gradient-to-br from-pink-50 to-purple-50';
+
+  const cardClass = darkMode ? 'bg-gray-800' : 'bg-white';
+  const textClass = darkMode ? 'text-white' : 'text-gray-800';
+  const inputClass = darkMode
+    ? 'bg-gray-700 text-white border-purple-500'
+    : 'bg-white text-gray-800 border-purple-300';
+
+  return (
+    <div className={`${bgClass} p-4`}>
+      <div className="max-w-4xl mx-auto">
+        <div className={`${cardClass} rounded-3xl shadow-xl overflow-hidden`}>
+
+          {/* ===== Header ===== */}
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white relative">
+            <div className="absolute top-4 right-4 flex gap-2">
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-2 bg-white bg-opacity-20 rounded-full"
+              >
+                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              <button
+                onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+                className="px-3 py-2 bg-white bg-opacity-20 rounded-full text-sm font-bold"
+              >
+                {language === 'ar' ? 'EN' : 'ع'}
+              </button>
+            </div>
+
+            <h1 className="text-3xl font-bold text-center">💜 {t.title}</h1>
+          </div>
+
+          {/* ===== Tabs ===== */}
+          <div className="flex border-b">
+            {[
+              { id: 'study', icon: BookOpen, label: t.study },
+              { id: 'dictionary', icon: Search, label: t.dictionary },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 p-4 flex items-center justify-center gap-2 ${
+                  activeTab === tab.id
+                    ? 'text-purple-600 border-b-2 border-purple-600'
+                    : 'text-gray-500'
+                }`}
+              >
+                <tab.icon size={18} />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ===== Content ===== */}
+          <div className="p-6">
+
+            {/* ===== Subjects ===== */}
+            {activeTab === 'study' && (
+              <div>
+                <h2 className={`text-2xl font-bold mb-4 ${textClass}`}>
+                  📚 {t.study}
+                </h2>
+
+                <input
+                  type="text"
+                  placeholder={t.addSubject}
+                  className={`w-full p-3 border-2 rounded-lg ${inputClass}`}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      addSubject(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+
+                <div className="mt-4 space-y-2">
+                  {subjects.map(s => (
+                    <div
+                      key={s.id}
+                      className="p-3 rounded-lg bg-purple-100"
+                    >
+                      {s.name}
+                    </div>
+                  ))}
+
+                  {subjects.length === 0 && (
+                    <p className="text-gray-400 text-center mt-6">
+                      {t.noSubjects}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ===== Dictionary ===== */}
+            {activeTab === 'dictionary' && (
+              <div className="space-y-4">
+                <h2 className={`text-2xl font-bold ${textClass}`}>
+                  {t.dictionaryTitle}
+                </h2>
+
+                <input
+                  type="text"
+                  value={dictionaryTerm}
+                  onChange={(e) => {
+                    setDictionaryTerm(e.target.value);
+                    searchPharmacyDictionary(e.target.value);
+                  }}
+                  placeholder={t.dictionaryPlaceholder}
+                  className={`w-full p-3 border-2 rounded-lg ${inputClass}`}
+                />
+
+                {isSearching && (
+                  <p className="text-purple-500">{t.searching}</p>
+                )}
+
+                {dictionaryResult && !dictionaryResult.error && (
+                  <div className={`p-4 rounded-xl border ${
+                    darkMode ? 'bg-gray-800' : 'bg-purple-50'
+                  }`}>
+                    <p><strong>{t.name}:</strong> {dictionaryResult.name}</p>
+                    <p><strong>{t.synonym}:</strong> {dictionaryResult.synonym}</p>
+                    <p className="text-sm text-gray-500">
+                      RxCUI: {dictionaryResult.rxcui}
+                    </p>
+                  </div>
+                )}
+
+                {dictionaryResult?.error && (
+                  <p className="text-red-500">{t.notFound}</p>
+                )}
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PharmacyStudyApp;
